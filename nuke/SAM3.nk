@@ -1,0 +1,55 @@
+Group {
+ name SAM3
+ label "SAM3\n\[value text_prompt]"
+ knobChanged "import sam3_gizmo; sam3_gizmo.knob_changed()"
+ addUserKnob {20 sam3_tab l "SAM3 Segment"}
+ addUserKnob {41 server_url l "Server URL" T server_url_str}
+ addUserKnob {4 server_url_str l "" -STARTLINE +INVISIBLE T "http://localhost:8765"}
+ addUserKnob {26 "" l "" +STARTLINE T ""}
+ addUserKnob {1 server_url l "Server URL"}
+ server_url "http://localhost:8765"
+ addUserKnob {6 "" l "" +STARTLINE}
+ addUserKnob {4 video_path_knob l "Video / Frames dir"}
+ addUserKnob {1 video_path l "Video / Frames dir"}
+ addUserKnob {1 output_dir l "Output dir (EXR masks)"}
+ addUserKnob {26 divider0 l "" +STARTLINE T ""}
+ addUserKnob {20 prompts_tab l Prompts}
+ addUserKnob {1 text_prompt l "Text prompt"}
+ addUserKnob {26 divider1 l "" +STARTLINE T "─── Bounding box ──────────────────────"}
+ addUserKnob {15 bbox l "Bbox" t "Draw a bounding box as the positive prompt"}
+ addUserKnob {26 divider2 l "" +STARTLINE T "─── Points ─────────────────────────────"}
+ addUserKnob {12 point_pos l "+ Point (positive)" t "Positive click point, normalised [0..1]"}
+ addUserKnob {12 neg_point_pos l "- Point (negative)" t "Negative click point, normalised [0..1]"}
+ addUserKnob {26 divider3 l "" +STARTLINE T ""}
+ addUserKnob {7 confidence l Confidence R 0 1}
+ confidence 0.5
+ addUserKnob {20 render_tab l Render}
+ addUserKnob {22 render_btn l "Render All Frames" T "import sam3_gizmo, nuke; sam3_gizmo.render_all(nuke.thisNode())"}
+ addUserKnob {22 cancel_btn l "Cancel" T "import sam3_gizmo, nuke; sam3_gizmo.cancel_render(nuke.thisNode())"}
+ addUserKnob {26 status_div l "" +STARTLINE T ""}
+ addUserKnob {1 status l Status +DISABLED}
+ status "No session"
+ addUserKnob {1 session_id l "" +DISABLED +INVISIBLE}
+}
+ Input {
+  inputs 0
+  name Input
+  xpos 0
+  ypos 0
+ }
+ Read {
+  inputs 0
+  name SAM3_masks_read
+  file ""
+  first 1
+  last 100
+  format "1920 1080 0 0 1920 1080 1 HD_1080"
+  xpos 200
+  ypos 0
+ }
+ Output {
+  name Output
+  xpos 200
+  ypos 100
+ }
+end_group
