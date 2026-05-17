@@ -1,0 +1,3 @@
+[submodule "sam3"]
+	path = sam3
+	url = https://github.com/pushkarev-alexandr/sam3.git
