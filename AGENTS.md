@@ -11,14 +11,12 @@ A SAM3 inference server (`server/`) and Nuke gizmo (`nuke/`) that let Nuke artis
 All commands from the repo root, using the venv in `sam3/.venv`:
 
 ```bash
-# Activate venv
-sam3\.venv\Scripts\activate
-
 # Start the server (loads both SAM3 models, then listens on :8765)
-python -m server.main
+start_server.cmd
 
-# Override defaults via env vars
-SAM3_PORT=9000 SAM3_VERSION=sam3 python -m server.main
+# Or manually, from repo root with sam3 venv:
+sam3\.venv\Scripts\activate
+uvicorn server.main:app --host 0.0.0.0 --port 8765
 ```
 
 Swagger UI at `http://localhost:8765/docs` once running.
@@ -95,10 +93,6 @@ import menu
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SAM3_VERSION` | `sam3` | `sam3` or `sam3.1` |
-| `SAM3_DEVICE` | `cuda` | PyTorch device |
-| `SAM3_CHECKPOINT` | `None` | Local checkpoint path; auto-downloads from HF if unset |
-| `SAM3_PORT` | `8765` | Server listen port |
 | `SAM3_SESSION_TTL` | `1200` | Seconds before idle session is closed |
 | `SAM3_OUTPUT_DIR` | `C:/tmp/sam3_masks` | Default EXR output directory |
 

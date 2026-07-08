@@ -1,0 +1,5 @@
+{
+  "extraPaths": ["sam3"],
+  "venvPath": "sam3",
+  "venv": ".venv"
+}

@@ -6,18 +6,18 @@ Add to your ~/.nuke/menu.py or project's init.py:
     sys.path.insert(0, r"C:/path/to/NukeSAM3/nuke")
     import menu  # noqa: F401
 """
-import os
-import sys
+# import os
+# import sys
 import nuke
 
-_NUKE_DIR = os.path.dirname(os.path.abspath(__file__))
+# _NUKE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Make the nuke/ directory importable inside Nuke
-if _NUKE_DIR not in sys.path:
-    sys.path.insert(0, _NUKE_DIR)
+# # Make the nuke/ directory importable inside Nuke
+# if _NUKE_DIR not in sys.path:
+#     sys.path.insert(0, _NUKE_DIR)
 
-# Register the gizmo path so nuke.createNode("SAM3") works
-nuke.pluginAddPath(_NUKE_DIR)
+# # Register the gizmo path so nuke.createNode("SAM3") works
+# nuke.pluginAddPath(_NUKE_DIR)
 
 
 def _check_server_health():
