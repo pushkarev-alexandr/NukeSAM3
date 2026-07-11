@@ -1,5 +1,6 @@
 Group {
  name SAM3_gizmo1
+ onCreate "import sam3_gizmo; sam3_gizmo.on_create()"
  knobChanged "import sam3_gizmo; sam3_gizmo.knob_changed()"
  addUserKnob {20 sam3_tab l "SAM3 Segment"}
  addUserKnob {1 server_url l "Server URL"}
@@ -8,10 +9,10 @@ Group {
  addUserKnob {1 output_dir l "Output dir (EXR masks)"}
  addUserKnob {26 divider0 l "" +STARTLINE T ""}
  addUserKnob {20 prompts_tab l Prompts}
+ addUserKnob {4 prompt_mode l "Prompt type" M {text bbox points}}
+ prompt_mode text
  addUserKnob {1 text_prompt l "Text prompt"}
- addUserKnob {26 divider1 l "" +STARTLINE T "─── Bounding box ──────────────────────"}
  addUserKnob {15 bbox l "Bbox" t "Draw a bounding box as the positive prompt"}
- addUserKnob {26 divider2 l "" +STARTLINE T "─── Points ─────────────────────────────"}
  addUserKnob {12 point_pos l "+ Point (positive)" t "Positive click point, normalised [0..1]"}
  addUserKnob {12 neg_point_pos l "- Point (negative)" t "Negative click point, normalised [0..1]"}
  addUserKnob {26 divider3 l "" +STARTLINE T ""}

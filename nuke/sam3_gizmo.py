@@ -66,6 +66,15 @@ INTERACTIVE_KNOBS = {"bbox", "text_prompt", "point_pos", "neg_point_pos", "confi
 SESSION_KNOBS = {"video_path", "output_dir", "server_url"}
 
 
+def on_create():
+    """Initialize prompt UI when the gizmo is created."""
+    try:
+        import nuke
+        _update_prompt_ui(nuke.thisNode())
+    except Exception as exc:
+        _log_error(exc)
+
+
 def knob_changed():
     """Call this from the gizmo's knobChanged callback."""
     try:
@@ -74,12 +83,27 @@ def knob_changed():
         k = nuke.thisKnob()
         name = k.name()
 
-        if name in SESSION_KNOBS:
+        if name == "prompt_mode":
+            _update_prompt_ui(node)
+        elif name in SESSION_KNOBS:
             _handle_session_knob_changed(node)
         elif name in INTERACTIVE_KNOBS:
             _schedule_interactive(node)
     except Exception as exc:
         _log_error(exc)
+
+
+def _update_prompt_ui(node):
+    """Show only the knobs for the selected prompt type."""
+    mode = node["prompt_mode"].value()
+    show_text = mode == "text"
+    show_bbox = mode == "bbox"
+    show_points = mode == "points"
+
+    node["text_prompt"].setVisible(show_text)
+    node["bbox"].setVisible(show_bbox)
+    node["point_pos"].setVisible(show_points)
+    node["neg_point_pos"].setVisible(show_points)
 
 
 def _handle_session_knob_changed(node):
@@ -139,20 +163,16 @@ def _schedule_interactive(node):
     state["timer"].start()
 
 
-def _fire_interactive(node):
-    """Runs in timer thread after debounce delay."""
-    import nuke
-    try:
-        session_id = node["session_id"].value().strip()
-        if not session_id:
-            return
+def _collect_prompt(node) -> tuple[Optional[str], Optional[dict], Optional[list]]:
+    """Collect prompt values for the active prompt_mode only."""
+    mode = node["prompt_mode"].value()
+    text = None
+    bbox = None
+    points = None
 
-        frame_index = int(nuke.frame())
-
-        # Collect prompt knob values
+    if mode == "text":
         text = node["text_prompt"].value().strip() or None
-
-        bbox = None
+    elif mode == "bbox":
         try:
             bv = node["bbox"].value()  # Box3_Knob returns (x, y, r, t) in pixels
             w_img = node.width() or 1
@@ -166,14 +186,14 @@ def _fire_interactive(node):
                 bbox = {"cx": cx, "cy": cy, "w": bw, "h": bh}
         except Exception:
             pass
-
-        points = []
+    elif mode == "points":
+        collected = []
         try:
             px, py = node["point_pos"].value()
             w_img = node.width() or 1
             h_img = node.height() or 1
             if px != 0 or py != 0:
-                points.append({"x": px / w_img, "y": py / h_img, "label": 1})
+                collected.append({"x": px / w_img, "y": py / h_img, "label": 1})
         except Exception:
             pass
         try:
@@ -181,9 +201,28 @@ def _fire_interactive(node):
             w_img = node.width() or 1
             h_img = node.height() or 1
             if npx != 0 or npy != 0:
-                points.append({"x": npx / w_img, "y": npy / h_img, "label": 0})
+                collected.append({"x": npx / w_img, "y": npy / h_img, "label": 0})
         except Exception:
             pass
+        if collected:
+            points = collected
+
+    return text, bbox, points
+
+
+def _fire_interactive(node):
+    """Runs in timer thread after debounce delay."""
+    import nuke
+    try:
+        session_id = node["session_id"].value().strip()
+        if not session_id:
+            return
+
+        frame_index = int(nuke.frame())
+        text, bbox, points = _collect_prompt(node)
+
+        if not text and bbox is None and not points:
+            return
 
         confidence = node["confidence"].value()
 
@@ -228,6 +267,12 @@ def render_all(node=None):
         nuke.message("No active SAM3 session. Set video_path first.")
         return
 
+    text, bbox, points = _collect_prompt(node)
+    if not text and bbox is None and not points:
+        mode = node["prompt_mode"].value()
+        nuke.message(f"Set a {mode} prompt before rendering.")
+        return
+
     state = _get_state(node)
     if state["prop_thread"] and state["prop_thread"].is_alive():
         nuke.message("Propagation already running.")
@@ -238,10 +283,11 @@ def render_all(node=None):
     state["cancel_flag"].clear()
 
     output_dir = node["output_dir"].value().strip()
+    frame_index = int(nuke.frame())
 
     state["prop_thread"] = threading.Thread(
         target=_propagation_worker,
-        args=(node, session_id, output_dir, task, state["cancel_flag"]),
+        args=(node, session_id, output_dir, frame_index, text, bbox, points, task, state["cancel_flag"]),
         daemon=True,
     )
     state["prop_thread"].start()
@@ -256,7 +302,17 @@ def cancel_render(node=None):
     state["cancel_flag"].set()
 
 
-def _propagation_worker(node, session_id: str, output_dir: str, task, cancel_flag: threading.Event):
+def _propagation_worker(
+    node,
+    session_id: str,
+    output_dir: str,
+    frame_index: int,
+    text: Optional[str],
+    bbox: Optional[dict],
+    points: Optional[list],
+    task,
+    cancel_flag: threading.Event,
+):
     import nuke
 
     def set_progress(pct: int, msg: str = ""):
@@ -267,9 +323,28 @@ def _propagation_worker(node, session_id: str, output_dir: str, task, cancel_fla
         nuke.executeInMainThread(_do)
 
     try:
+        set_progress(0, "Adding prompt…")
+        client = _client(node)
+        if text:
+            client.add_prompt(session_id, frame_index, text=text)
+        elif bbox:
+            client.add_prompt(
+                session_id,
+                frame_index,
+                bounding_boxes=[[bbox["cx"], bbox["cy"], bbox["w"], bbox["h"]]],
+                bounding_box_labels=[1],
+            )
+        elif points:
+            client.add_prompt(
+                session_id,
+                frame_index,
+                points=[[p["x"], p["y"]] for p in points],
+                point_labels=[p["label"] for p in points],
+            )
+
         set_progress(0, "Starting propagation…")
 
-        for event in _client(node).iter_propagate(
+        for event in client.iter_propagate(
             session_id=session_id,
             output_dir=output_dir if output_dir else None,
             cancel_check=lambda: cancel_flag.is_set(),

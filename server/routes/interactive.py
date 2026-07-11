@@ -33,8 +33,15 @@ async def interactive_infer(body: InteractiveRequest, request: Request) -> Inter
     if session.propagation_running:
         session.request_cancel()
 
-    if body.text_prompt is None and body.bbox is None and (not body.points):
-        raise HTTPException(status_code=400, detail="At least one of text_prompt, bbox, or points is required")
+    prompt_types = sum([
+        body.text_prompt is not None,
+        body.bbox is not None,
+        bool(body.points),
+    ])
+    if prompt_types == 0:
+        raise HTTPException(status_code=400, detail="One of text_prompt, bbox, or points is required")
+    if prompt_types > 1:
+        raise HTTPException(status_code=400, detail="Only one of text_prompt, bbox, or points may be provided")
 
     t0 = time.perf_counter()
 
