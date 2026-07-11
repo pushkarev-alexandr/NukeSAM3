@@ -29,6 +29,7 @@ if _THIS_DIR not in sys.path:
     sys.path.insert(0, _THIS_DIR)
 
 from sam3_client import SAM3Client  # noqa: E402
+from nuke_paths import nuke_path, read_path_knob, set_path_knob, sync_path_knob  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Per-node state
@@ -86,6 +87,8 @@ def knob_changed():
         if name == "prompt_mode":
             _update_prompt_ui(node)
         elif name in SESSION_KNOBS:
+            if name in ("video_path", "output_dir"):
+                sync_path_knob(node, name)
             _handle_session_knob_changed(node)
         elif name in INTERACTIVE_KNOBS:
             _schedule_interactive(node)
@@ -114,7 +117,7 @@ def _handle_session_knob_changed(node):
     # Close old session
     _close_session(node)
     # Start new session if video_path is set
-    video_path = node["video_path"].value().strip()
+    video_path = read_path_knob(node, "video_path")
     if video_path and os.path.exists(video_path):
         t = threading.Thread(target=_create_session_bg, args=(node,), daemon=True)
         t.start()
@@ -124,10 +127,10 @@ def _create_session_bg(node):
     """Background thread: create SAM3 session and update gizmo status."""
     import nuke
     try:
-        video_path = node["video_path"].value().strip()
-        output_dir = node["output_dir"].value().strip()
+        video_path = read_path_knob(node, "video_path")
+        output_dir = read_path_knob(node, "output_dir")
         if not output_dir:
-            output_dir = str(Path(video_path).parent / "sam3_masks")
+            output_dir = nuke_path(str(Path(video_path).parent / "sam3_masks"))
 
         resp = _client(node).create_session(
             video_path=video_path,
@@ -139,7 +142,7 @@ def _create_session_bg(node):
 
         def update():
             node["session_id"].setValue(session_id)
-            node["output_dir"].setValue(output_dir)
+            set_path_knob(node, "output_dir", output_dir)
             node["status"].setValue(
                 f"Session ready  |  {frame_count} frames  |  {resp.get('width')}x{resp.get('height')}"
             )
@@ -282,7 +285,7 @@ def render_all(node=None):
     task = nuke.ProgressTask("SAM3 Propagation")
     state["cancel_flag"].clear()
 
-    output_dir = node["output_dir"].value().strip()
+    output_dir = read_path_knob(node, "output_dir")
     frame_index = int(nuke.frame())
 
     state["prop_thread"] = threading.Thread(
@@ -398,12 +401,12 @@ def _update_read_node(node, output_dir: Optional[str], single_exr: Optional[str]
         return
 
     if single_exr:
-        read["file"].setValue(single_exr)
+        read["file"].setValue(nuke_path(single_exr))
         if frame is not None:
             read["first"].setValue(frame)
             read["last"].setValue(frame)
     elif output_dir:
-        pattern = str(Path(output_dir) / "mask_%04d.exr")
+        pattern = nuke_path(str(Path(output_dir) / "mask_%04d.exr"))
         read["file"].setValue(pattern)
         # Let Nuke detect the frame range
         read.knob("reload").execute()
