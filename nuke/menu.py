@@ -45,5 +45,5 @@ def _check_server_health():
 toolbar = nuke.toolbar("Nodes")
 sam3_menu = toolbar.addMenu("SAM3", icon="")
 
-sam3_menu.addCommand("SAM3 Segmentation", lambda: nuke.createNode("SAM3"))
+sam3_menu.addCommand("SAM3 Segmentation", "nuke.createNode('SAM3')")
 sam3_menu.addCommand("Check Server Health", _check_server_health)

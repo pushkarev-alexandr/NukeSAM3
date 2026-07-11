@@ -366,3 +366,6 @@ def _log_error(exc: Exception):
         nuke.warning(f"SAM3 gizmo error: {exc}")
     except Exception:
         print(f"SAM3 gizmo error: {exc}")
+
+if __name__ == "__main__":
+    knob_changed()

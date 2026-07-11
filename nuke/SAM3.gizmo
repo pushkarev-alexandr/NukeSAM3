@@ -1,15 +1,9 @@
 Group {
- name SAM3
- label "SAM3\n\[value text_prompt]"
+ name SAM3_gizmo1
  knobChanged "import sam3_gizmo; sam3_gizmo.knob_changed()"
  addUserKnob {20 sam3_tab l "SAM3 Segment"}
- addUserKnob {41 server_url l "Server URL" T server_url_str}
- addUserKnob {4 server_url_str l "" -STARTLINE +INVISIBLE T "http://localhost:8765"}
- addUserKnob {26 "" l "" +STARTLINE T ""}
  addUserKnob {1 server_url l "Server URL"}
  server_url "http://localhost:8765"
- addUserKnob {6 "" l "" +STARTLINE}
- addUserKnob {4 video_path_knob l "Video / Frames dir"}
  addUserKnob {1 video_path l "Video / Frames dir"}
  addUserKnob {1 output_dir l "Output dir (EXR masks)"}
  addUserKnob {26 divider0 l "" +STARTLINE T ""}
