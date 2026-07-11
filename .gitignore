@@ -2,3 +2,8 @@ __pycache__/
 .vscode/
 .venv/
 settings.local.json
+
+# Local test sequences and generated masks
+testdata/**
+!testdata/**/
+!testdata/**/.gitkeep
