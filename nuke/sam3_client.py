@@ -19,7 +19,7 @@ class SAM3Client:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _post(self, path: str, body: dict) -> dict:
+    def _post(self, path: str, body: dict, timeout: Optional[int] = None) -> dict:
         data = json.dumps(body).encode("utf-8")
         req = urllib.request.Request(
             self.base_url + path,
@@ -28,7 +28,7 @@ class SAM3Client:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=timeout if timeout is not None else self.timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             body_text = e.read().decode("utf-8", errors="replace")
@@ -91,7 +91,7 @@ class SAM3Client:
         if points is not None:
             body["points"] = points
             body["point_labels"] = point_labels or [1] * len(points)
-        return self._post("/infer/add_prompt", body)
+        return self._post("/infer/add_prompt", body, timeout=60)
 
     def interactive(
         self,
