@@ -17,6 +17,8 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+import torch
+
 
 @dataclass(order=True)
 class _QueueItem:
@@ -97,7 +99,11 @@ class GPUWorker:
                 break
 
             try:
-                result = item.task()
+                if torch.cuda.is_available():
+                    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                        result = item.task()
+                else:
+                    result = item.task()
                 # concurrent.futures.Future.set_result is thread-safe;
                 # asyncio.wrap_future handles cross-thread notification internally.
                 item.future.set_result(result)

@@ -137,7 +137,8 @@ class SessionManager:
         with self._lock:
             expired = [
                 sid for sid, s in self._sessions.items()
-                if s.is_expired(config.SESSION_TTL_SECONDS)
+                if not s.propagation_running
+                and s.is_expired(config.SESSION_TTL_SECONDS)
             ]
 
         for sid in expired:

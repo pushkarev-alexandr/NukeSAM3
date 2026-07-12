@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+import torch
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
@@ -91,6 +92,7 @@ def _propagate_worker(predictor, session, body: PropagateRequest, output_dir: Pa
     total = session.frame_count
     written = 0
     t_start = time.perf_counter()
+    session.touch()
 
     try:
         stream_req = {
@@ -99,33 +101,42 @@ def _propagate_worker(predictor, session, body: PropagateRequest, output_dir: Pa
             "propagation_direction": body.propagation_direction,
         }
 
-        for frame_response in predictor.handle_stream_request(stream_req):
-            if session.propagation_cancel.is_set():
-                push("cancelled", {"frames_written": written, "reason": "interactive_preempt"})
-                return
+        autocast_ctx = (
+            torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+            if torch.cuda.is_available()
+            else torch.autocast(device_type="cpu", enabled=False)
+        )
+        with autocast_ctx:
+            for frame_response in predictor.handle_stream_request(stream_req):
+                if session.propagation_cancel.is_set():
+                    push("cancelled", {"frames_written": written, "reason": "interactive_preempt"})
+                    return
 
-            frame_idx = frame_response["frame_index"]
-            outputs = frame_response["outputs"]
-            masks = outputs.get("out_binary_masks")
+                session.touch()
 
-            if masks is not None:
-                if not isinstance(masks, np.ndarray):
-                    masks = np.asarray(masks, dtype=bool)
-                exr_path = output_dir / body.frame_filename_pattern % frame_idx
-                write_mask_exr(exr_path, masks)
-                written += 1
-            else:
-                exr_path = output_dir / body.frame_filename_pattern % frame_idx
+                frame_idx = frame_response["frame_index"]
+                outputs = frame_response["outputs"]
+                masks = outputs.get("out_binary_masks")
 
-            elapsed_ms = int((time.perf_counter() - t_start) * 1000)
-            pct = int((written / max(total, 1)) * 100)
-            push("progress", {
-                "frame_index": frame_idx,
-                "total_frames": total,
-                "percent": pct,
-                "exr_path": str(exr_path),
-                "elapsed_ms": elapsed_ms,
-            })
+                if masks is not None:
+                    if not isinstance(masks, np.ndarray):
+                        masks = np.asarray(masks, dtype=bool)
+                    masks = masks.reshape(-1, masks.shape[-2], masks.shape[-1])
+                    exr_path = output_dir / (body.frame_filename_pattern % frame_idx)
+                    write_mask_exr(exr_path, masks)
+                    written += 1
+                else:
+                    exr_path = output_dir / (body.frame_filename_pattern % frame_idx)
+
+                elapsed_ms = int((time.perf_counter() - t_start) * 1000)
+                pct = int((written / max(total, 1)) * 100)
+                push("progress", {
+                    "frame_index": frame_idx,
+                    "total_frames": total,
+                    "percent": pct,
+                    "exr_path": str(exr_path),
+                    "elapsed_ms": elapsed_ms,
+                })
 
         elapsed_ms = int((time.perf_counter() - t_start) * 1000)
         push("complete", {

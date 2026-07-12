@@ -139,6 +139,7 @@ def _run_interactive(processor, session, body: InteractiveRequest) -> dict:
             masks_np = masks.cpu().numpy().astype(bool)
         else:
             masks_np = np.asarray(masks, dtype=bool)
+        masks_np = masks_np.reshape(-1, masks_np.shape[-2], masks_np.shape[-1])
 
         if isinstance(scores_t, torch.Tensor):
             scores_list = scores_t.cpu().tolist()
