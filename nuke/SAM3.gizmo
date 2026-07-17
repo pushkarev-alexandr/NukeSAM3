@@ -5,8 +5,8 @@ Group {
  addUserKnob {20 sam3_tab l "SAM3 Segment"}
  addUserKnob {1 server_url l "Server URL"}
  server_url "http://localhost:8765"
- addUserKnob {1 video_path l "Video / Frames dir"}
- addUserKnob {1 output_dir l "Output dir (EXR masks)"}
+ addUserKnob {2 video_path l "Video / Frames dir"}
+ addUserKnob {2 output_dir l "Output dir (EXR masks)"}
  addUserKnob {26 divider0 l "" +STARTLINE T ""}
  addUserKnob {20 prompts_tab l Prompts}
  addUserKnob {4 prompt_mode l "Prompt type" M {text bbox points}}
